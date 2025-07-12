@@ -23,17 +23,17 @@ class TestUSWeatherFunctions:
                         "areaDesc": "Northern California",
                         "severity": "Severe",
                         "description": "Severe thunderstorms expected",
-                        "instruction": "Take immediate shelter"
+                        "instruction": "Take immediate shelter",
                     }
                 }
             ]
         }
-        
-        with patch('weather.make_nws_request', new_callable=AsyncMock) as mock_request:
+
+        with patch("weather.make_nws_request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await weather.get_alerts("CA")
-            
+
             assert "Severe Thunderstorm Warning" in result
             assert "Northern California" in result
             assert "Severe" in result
@@ -43,23 +43,23 @@ class TestUSWeatherFunctions:
     async def test_get_alerts_no_alerts(self):
         """Test weather alerts when no alerts are active."""
         mock_response = {"features": []}
-        
-        with patch('weather.make_nws_request', new_callable=AsyncMock) as mock_request:
+
+        with patch("weather.make_nws_request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await weather.get_alerts("CA")
-            
+
             assert "No active alerts" in result
             mock_request.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_alerts_api_failure(self):
         """Test weather alerts when API call fails."""
-        with patch('weather.make_nws_request', new_callable=AsyncMock) as mock_request:
+        with patch("weather.make_nws_request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = None
-            
+
             result = await weather.get_alerts("CA")
-            
+
             assert "Unable to fetch alerts" in result
             mock_request.assert_called_once()
 
@@ -71,7 +71,7 @@ class TestUSWeatherFunctions:
                 "forecast": "https://api.weather.gov/gridpoints/MTR/85,105/forecast"
             }
         }
-        
+
         mock_forecast_response = {
             "properties": {
                 "periods": [
@@ -81,7 +81,7 @@ class TestUSWeatherFunctions:
                         "temperatureUnit": "F",
                         "windSpeed": "10 mph",
                         "windDirection": "NW",
-                        "detailedForecast": "Partly cloudy with a high of 75."
+                        "detailedForecast": "Partly cloudy with a high of 75.",
                     },
                     {
                         "name": "Tonight",
@@ -89,17 +89,17 @@ class TestUSWeatherFunctions:
                         "temperatureUnit": "F",
                         "windSpeed": "5 mph",
                         "windDirection": "W",
-                        "detailedForecast": "Mostly clear with a low of 55."
-                    }
+                        "detailedForecast": "Mostly clear with a low of 55.",
+                    },
                 ]
             }
         }
-        
-        with patch('weather.make_nws_request', new_callable=AsyncMock) as mock_request:
+
+        with patch("weather.make_nws_request", new_callable=AsyncMock) as mock_request:
             mock_request.side_effect = [mock_points_response, mock_forecast_response]
-            
+
             result = await weather.get_forecast(37.7749, -122.4194)
-            
+
             assert "Today" in result
             assert "75°F" in result
             assert "Partly cloudy" in result
@@ -109,11 +109,11 @@ class TestUSWeatherFunctions:
     @pytest.mark.asyncio
     async def test_get_forecast_points_failure(self):
         """Test forecast when points API call fails."""
-        with patch('weather.make_nws_request', new_callable=AsyncMock) as mock_request:
+        with patch("weather.make_nws_request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = None
-            
+
             result = await weather.get_forecast(37.7749, -122.4194)
-            
+
             assert "Unable to fetch forecast data" in result
             mock_request.assert_called_once()
 
@@ -132,7 +132,7 @@ class TestUKWeatherFunctions:
                 "wind_speed_10m": 15.2,
                 "wind_direction_10m": 225,
                 "weather_code": 1,
-                "precipitation": 0.0
+                "precipitation": 0.0,
             },
             "daily": {
                 "time": ["2025-07-11", "2025-07-12", "2025-07-13"],
@@ -141,19 +141,21 @@ class TestUKWeatherFunctions:
                 "temperature_2m_min": [15.2, 16.8, 14.5],
                 "precipitation_sum": [0.0, 2.1, 8.5],
                 "precipitation_probability_max": [10, 25, 75],
-                "wind_speed_10m_max": [18.5, 22.1, 35.2]
-            }
+                "wind_speed_10m_max": [18.5, 22.1, 35.2],
+            },
         }
-        
-        with patch('weather.make_open_meteo_request', new_callable=AsyncMock) as mock_request:
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await weather.get_uk_forecast(51.5074, -0.1278)
-            
+
             assert "Current Conditions" in result
             assert "22.5°C" in result
             assert "24.1°C" in result  # feels like
-            assert "65%" in result     # humidity
+            assert "65%" in result  # humidity
             assert "2025-07-11" in result
             assert "25.5°C" in result  # max temp
             assert "Mainly clear" in result
@@ -162,11 +164,13 @@ class TestUKWeatherFunctions:
     @pytest.mark.asyncio
     async def test_get_uk_forecast_api_failure(self):
         """Test UK forecast when API call fails."""
-        with patch('weather.make_open_meteo_request', new_callable=AsyncMock) as mock_request:
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
             mock_request.return_value = None
-            
+
             result = await weather.get_uk_forecast(51.5074, -0.1278)
-            
+
             assert "Unable to fetch UK weather forecast" in result
             mock_request.assert_called_once()
 
@@ -177,7 +181,7 @@ class TestUKWeatherFunctions:
             "current": {
                 "temperature_2m": 20.0,
                 "weather_code": 1,
-                "wind_speed_10m": 15.0
+                "wind_speed_10m": 15.0,
             },
             "daily": {
                 "time": ["2025-07-11", "2025-07-12"],
@@ -185,15 +189,17 @@ class TestUKWeatherFunctions:
                 "temperature_2m_max": [25.0, 23.0],
                 "temperature_2m_min": [15.0, 16.0],
                 "precipitation_sum": [0.0, 2.0],
-                "wind_speed_10m_max": [20.0, 18.0]
-            }
+                "wind_speed_10m_max": [20.0, 18.0],
+            },
         }
-        
-        with patch('weather.make_open_meteo_request', new_callable=AsyncMock) as mock_request:
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await weather.get_uk_weather_alerts(51.5074, -0.1278)
-            
+
             assert "No significant weather alerts" in result
             assert "normal ranges" in result
             mock_request.assert_called_once()
@@ -205,23 +211,25 @@ class TestUKWeatherFunctions:
             "current": {
                 "temperature_2m": 35.0,  # Heat warning
                 "weather_code": 1,
-                "wind_speed_10m": 55.0   # High wind warning
+                "wind_speed_10m": 55.0,  # High wind warning
             },
             "daily": {
                 "time": ["2025-07-11", "2025-07-12"],
                 "weather_code": [1, 2],
                 "temperature_2m_max": [38.0, 25.0],  # Extreme heat
                 "temperature_2m_min": [20.0, 16.0],
-                "precipitation_sum": [0.0, 30.0],    # Heavy rain
-                "wind_speed_10m_max": [65.0, 25.0]   # Severe wind
-            }
+                "precipitation_sum": [0.0, 30.0],  # Heavy rain
+                "wind_speed_10m_max": [65.0, 25.0],  # Severe wind
+            },
         }
-        
-        with patch('weather.make_open_meteo_request', new_callable=AsyncMock) as mock_request:
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await weather.get_uk_weather_alerts(51.5074, -0.1278)
-            
+
             assert "HIGH WIND WARNING" in result
             assert "55.0 km/h" in result
             assert "HEAT ADVISORY" in result
@@ -237,11 +245,13 @@ class TestUKWeatherFunctions:
     @pytest.mark.asyncio
     async def test_get_uk_weather_alerts_api_failure(self):
         """Test UK weather alerts when API call fails."""
-        with patch('weather.make_open_meteo_request', new_callable=AsyncMock) as mock_request:
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
             mock_request.return_value = None
-            
+
             result = await weather.get_uk_weather_alerts(51.5074, -0.1278)
-            
+
             assert "Unable to fetch UK weather alerts" in result
             mock_request.assert_called_once()
 
@@ -253,52 +263,60 @@ class TestHelperFunctions:
     async def test_make_nws_request_success(self):
         """Test successful NWS API request."""
         mock_response_data = {"test": "data"}
-        
-        with patch('httpx.AsyncClient') as mock_client:
+
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status.return_value = None
-            
-            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
-            
+
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+                return_value=mock_response
+            )
+
             result = await weather.make_nws_request("https://test.com")
-            
+
             assert result == mock_response_data
 
     @pytest.mark.asyncio
     async def test_make_nws_request_failure(self):
         """Test NWS API request failure."""
-        with patch('httpx.AsyncClient') as mock_client:
-            mock_client.return_value.__aenter__.return_value.get = AsyncMock(side_effect=Exception("Network error"))
-            
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+                side_effect=Exception("Network error")
+            )
+
             result = await weather.make_nws_request("https://test.com")
-            
+
             assert result is None
 
     @pytest.mark.asyncio
     async def test_make_open_meteo_request_success(self):
         """Test successful Open-Meteo API request."""
         mock_response_data = {"test": "data"}
-        
-        with patch('httpx.AsyncClient') as mock_client:
+
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status.return_value = None
-            
-            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
-            
+
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+                return_value=mock_response
+            )
+
             result = await weather.make_open_meteo_request("https://test.com")
-            
+
             assert result == mock_response_data
 
     @pytest.mark.asyncio
     async def test_make_open_meteo_request_failure(self):
         """Test Open-Meteo API request failure."""
-        with patch('httpx.AsyncClient') as mock_client:
-            mock_client.return_value.__aenter__.return_value.get = AsyncMock(side_effect=Exception("Network error"))
-            
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+                side_effect=Exception("Network error")
+            )
+
             result = await weather.make_open_meteo_request("https://test.com")
-            
+
             assert result is None
 
     def test_format_alert(self):
@@ -309,12 +327,12 @@ class TestHelperFunctions:
                 "areaDesc": "Test Area",
                 "severity": "Severe",
                 "description": "Test description",
-                "instruction": "Test instruction"
+                "instruction": "Test instruction",
             }
         }
-        
+
         result = weather.format_alert(mock_feature)
-        
+
         assert "Test Event" in result
         assert "Test Area" in result
         assert "Severe" in result
@@ -323,12 +341,10 @@ class TestHelperFunctions:
 
     def test_format_alert_missing_fields(self):
         """Test alert formatting with missing fields."""
-        mock_feature = {
-            "properties": {}
-        }
-        
+        mock_feature = {"properties": {}}
+
         result = weather.format_alert(mock_feature)
-        
+
         assert "Unknown" in result
         assert "No description available" in result
         assert "No specific instructions provided" in result

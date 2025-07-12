@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# IDE and tooling
+.claude
+.vscode
+
+# Test cache
+.pytest_cache
