@@ -117,6 +117,23 @@ class TestUSWeatherFunctions:
             assert "Unable to fetch forecast data" in result
             mock_request.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_get_forecast_detailed_failure(self):
+        """Test forecast when detailed forecast API call fails."""
+        mock_points_response = {
+            "properties": {
+                "forecast": "https://api.weather.gov/gridpoints/MTR/85,105/forecast"
+            }
+        }
+
+        with patch("weather.make_nws_request", new_callable=AsyncMock) as mock_request:
+            mock_request.side_effect = [mock_points_response, None]
+
+            result = await weather.get_forecast(37.7749, -122.4194)
+
+            assert "Unable to fetch detailed forecast" in result
+            assert mock_request.call_count == 2
+
 
 class TestUKWeatherFunctions:
     """Test UK weather functions with mocked API calls."""
@@ -240,6 +257,58 @@ class TestUKWeatherFunctions:
             assert "30.0 mm" in result
             assert "SEVERE WIND WARNING" in result
             assert "65.0 km/h" in result
+            mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_uk_weather_alerts_moderate_conditions(self):
+        """Test UK weather alerts with moderate warning conditions."""
+        mock_response = {
+            "current": {
+                "temperature_2m": -2.0,  # Cold weather warning
+                "weather_code": 1,
+                "wind_speed_10m": 35.0,  # Wind advisory
+            },
+            "daily": {
+                "time": ["2025-07-11", "2025-07-12", "2025-07-13"],
+                "weather_code": [1, 2, 3],
+                "temperature_2m_max": [25.0, 34.0, 22.0],  # Heat warning on day 2
+                "temperature_2m_min": [15.0, 20.0, -8.0],  # Severe cold on day 3
+                "precipitation_sum": [0.0, 18.0, 5.0],  # Rain advisory on day 2
+                "wind_speed_10m_max": [20.0, 45.0, 25.0],  # Wind warning on day 2
+            },
+        }
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            result = await weather.get_uk_weather_alerts(51.5074, -0.1278)
+
+            # Test moderate wind advisory (line 275)
+            assert "WIND ADVISORY" in result
+            assert "35.0 km/h" in result
+
+            # Test cold weather warning (line 289)
+            assert "COLD WEATHER WARNING" in result
+            assert "-2.0°C" in result
+
+            # Test wind warning in forecast (line 329)
+            assert "WIND WARNING for 2025-07-12" in result
+            assert "45.0 km/h" in result
+
+            # Test heat warning in forecast (line 343)
+            assert "HEAT WARNING for 2025-07-12" in result
+            assert "34.0°C" in result
+
+            # Test severe cold warning
+            assert "SEVERE COLD WARNING for 2025-07-13" in result
+            assert "-8.0°C" in result
+
+            # Test rain advisory (line 357)
+            assert "RAIN ADVISORY for 2025-07-12" in result
+            assert "18.0 mm" in result
+
             mock_request.assert_called_once()
 
     @pytest.mark.asyncio

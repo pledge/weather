@@ -1,7 +1,7 @@
 [project]
 name = "weather"
 version = "0.1.0"
-description = "Add your description here"
+description = "MCP server providing weather data for US and UK locations"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -13,5 +13,18 @@ dependencies = [
 test = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
+]
+
+[tool.coverage.run]
+omit = [
+    "tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "mcp.run",
 ]
