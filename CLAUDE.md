@@ -11,6 +11,7 @@
 - Follow ruff formatting rules
 
 # Workflow
+- When you are asked to work on a task think hard about the possible options, then present the plan before proceeding.
 - Format all python code using ruff after each task to ensure conformance
 - Create and update tests. Consider failure scenarios. Review missing coverage.
 - Run the test suite. Prefer running only applicable tests.

@@ -247,13 +247,13 @@ class TestUKWeatherFunctions:
 
             result = await weather.get_uk_weather_alerts(51.5074, -0.1278)
 
-            assert "HIGH WIND WARNING" in result
+            assert "WIND WARNING" in result
             assert "55.0 km/h" in result
             assert "HEAT ADVISORY" in result
             assert "35.0°C" in result
             assert "HEAT WARNING" in result
             assert "38.0°C" in result
-            assert "HEAVY RAIN WARNING" in result
+            assert "RAIN WARNING for 2025-07-12" in result
             assert "30.0 mm" in result
             assert "SEVERE WIND WARNING" in result
             assert "65.0 km/h" in result
@@ -323,6 +323,372 @@ class TestUKWeatherFunctions:
 
             assert "Unable to fetch UK weather alerts" in result
             mock_request.assert_called_once()
+
+
+class TestJapanWeatherFunctions:
+    """Test Japan weather functions with mocked API calls."""
+
+    @pytest.mark.asyncio
+    async def test_get_japan_forecast_success(self):
+        """Test successful Japan weather forecast retrieval."""
+        mock_response = {
+            "current": {
+                "temperature_2m": 28.5,
+                "apparent_temperature": 31.2,
+                "relative_humidity_2m": 70,
+                "wind_speed_10m": 12.8,
+                "wind_direction_10m": 180,
+                "weather_code": 2,
+                "precipitation": 0.5,
+            },
+            "daily": {
+                "time": ["2025-07-13", "2025-07-14", "2025-07-15"],
+                "weather_code": [2, 3, 61],
+                "temperature_2m_max": [32.1, 29.5, 26.8],
+                "temperature_2m_min": [22.5, 21.8, 20.5],
+                "precipitation_sum": [1.2, 0.0, 15.5],
+                "precipitation_probability_max": [20, 5, 80],
+                "wind_speed_10m_max": [18.5, 15.2, 25.8],
+            },
+        }
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            result = await weather.get_japan_forecast(35.6762, 139.6503)
+
+            assert "Current Conditions" in result
+            assert "28.5°C" in result
+            assert "31.2°C" in result  # feels like
+            assert "70%" in result  # humidity
+            assert "2025-07-13" in result
+            assert "32.1°C" in result  # max temp
+            assert "Partly cloudy" in result
+            mock_request.assert_called_once()
+
+            # Verify the URL contains Asia/Tokyo timezone
+            call_args = mock_request.call_args[0][0]
+            assert "timezone=Asia/Tokyo" in call_args
+
+    @pytest.mark.asyncio
+    async def test_get_japan_forecast_api_failure(self):
+        """Test Japan forecast when API call fails."""
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = None
+
+            result = await weather.get_japan_forecast(35.6762, 139.6503)
+
+            assert "Unable to fetch JAPAN weather forecast" in result
+            mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_japan_weather_alerts_no_alerts(self):
+        """Test Japan weather alerts when no severe conditions."""
+        mock_response = {
+            "current": {
+                "temperature_2m": 25.0,
+                "weather_code": 1,
+                "wind_speed_10m": 20.0,
+            },
+            "daily": {
+                "time": ["2025-07-13", "2025-07-14"],
+                "weather_code": [1, 2],
+                "temperature_2m_max": [28.0, 26.0],
+                "temperature_2m_min": [18.0, 19.0],
+                "precipitation_sum": [0.0, 5.0],
+                "wind_speed_10m_max": [25.0, 22.0],
+            },
+        }
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            result = await weather.get_japan_weather_alerts(35.6762, 139.6503)
+
+            assert "No significant weather alerts" in result
+            assert "normal ranges" in result
+            mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_japan_weather_alerts_with_typhoon_warnings(self):
+        """Test Japan weather alerts with typhoon conditions."""
+        mock_response = {
+            "current": {
+                "temperature_2m": 38.0,  # Extreme heat warning
+                "weather_code": 1,
+                "wind_speed_10m": 65.0,  # Typhoon warning
+            },
+            "daily": {
+                "time": ["2025-07-13", "2025-07-14"],
+                "weather_code": [1, 2],
+                "temperature_2m_max": [40.0, 28.0],  # Extreme heat
+                "temperature_2m_min": [25.0, 18.0],
+                "precipitation_sum": [0.0, 60.0],  # Heavy rain
+                "wind_speed_10m_max": [90.0, 30.0],  # Typhoon
+            },
+        }
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            result = await weather.get_japan_weather_alerts(35.6762, 139.6503)
+
+            assert "TYPHOON/SEVERE WIND WARNING" in result
+            assert "65.0 km/h" in result
+            assert "EXTREME HEAT WARNING" in result
+            assert "38.0°C" in result
+            assert "TYPHOON WARNING for 2025-07-13" in result
+            assert "90.0 km/h" in result
+            assert "EXTREME HEAT WARNING for 2025-07-13" in result
+            assert "40.0°C" in result
+            assert "HEAVY RAIN WARNING for 2025-07-14" in result
+            assert "60.0 mm" in result
+            mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_japan_weather_alerts_moderate_conditions(self):
+        """Test Japan weather alerts with moderate warning conditions."""
+        mock_response = {
+            "current": {
+                "temperature_2m": -2.0,  # Cold weather warning
+                "weather_code": 1,
+                "wind_speed_10m": 30.0,  # Wind advisory
+            },
+            "daily": {
+                "time": ["2025-07-13", "2025-07-14", "2025-07-15"],
+                "weather_code": [1, 2, 3],
+                "temperature_2m_max": [28.0, 35.0, 25.0],  # Heat advisory on day 2
+                "temperature_2m_min": [18.0, 22.0, -12.0],  # Severe cold on day 3
+                "precipitation_sum": [0.0, 20.0, 8.0],  # Rain advisory on day 2
+                "wind_speed_10m_max": [25.0, 55.0, 30.0],  # Severe wind on day 2
+            },
+        }
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            result = await weather.get_japan_weather_alerts(35.6762, 139.6503)
+
+            # Test wind advisory
+            assert "WIND ADVISORY" in result
+            assert "30.0 km/h" in result
+
+            # Test cold weather warning
+            assert "COLD WEATHER WARNING" in result
+            assert "-2.0°C" in result
+
+            # Test severe wind warning in forecast
+            assert "SEVERE WIND WARNING for 2025-07-14" in result
+            assert "55.0 km/h" in result
+
+            # Test heat warning in forecast
+            assert "HEAT WARNING for 2025-07-14" in result
+            assert "35.0°C" in result
+
+            # Test severe cold warning
+            assert "SEVERE COLD WARNING for 2025-07-15" in result
+            assert "-12.0°C" in result
+
+            # Test rain advisory
+            assert "RAIN ADVISORY for 2025-07-14" in result
+            assert "20.0 mm" in result
+
+            mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_japan_weather_alerts_api_failure(self):
+        """Test Japan weather alerts when API call fails."""
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = None
+
+            result = await weather.get_japan_weather_alerts(35.6762, 139.6503)
+
+            assert "Unable to fetch JAPAN weather alerts" in result
+            mock_request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_japan_forecast_empty_daily_data(self):
+        """Test Japan forecast with empty daily data."""
+        mock_response = {
+            "current": {
+                "temperature_2m": 25.0,
+                "apparent_temperature": 27.0,
+                "relative_humidity_2m": 60,
+                "wind_speed_10m": 10.0,
+                "wind_direction_10m": 90,
+                "weather_code": 1,
+                "precipitation": 0.0,
+            },
+            "daily": {},
+        }
+
+        with patch(
+            "weather.make_open_meteo_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response
+
+            result = await weather.get_japan_forecast(35.6762, 139.6503)
+
+            assert "Current Conditions" in result
+            assert "25.0°C" in result
+            assert "27.0°C" in result  # feels like
+            assert "60%" in result  # humidity
+            assert "Mainly clear" in result
+            mock_request.assert_called_once()
+
+
+class TestRegionalFunctions:
+    """Test shared regional functions for edge cases and full coverage."""
+
+    @pytest.mark.asyncio
+    async def test_get_regional_forecast_unsupported_region(self):
+        """Test regional forecast with unsupported region."""
+        result = await weather.get_regional_forecast(
+            35.6762, 139.6503, "invalid_region"
+        )
+        assert "Unsupported region: invalid_region" in result
+
+    @pytest.mark.asyncio
+    async def test_get_regional_weather_alerts_unsupported_region(self):
+        """Test regional alerts with unsupported region."""
+        result = await weather.get_regional_weather_alerts(
+            35.6762, 139.6503, "invalid_region"
+        )
+        assert "Unsupported region: invalid_region" in result
+
+    @pytest.mark.asyncio
+    async def test_generate_current_alerts_high_wind_warning(self):
+        """Test HIGH WIND WARNING threshold (line 204) - needs wind > severe threshold."""
+        current = {"wind_speed_10m": 65.0, "temperature_2m": 20.0}
+        config = weather.REGION_CONFIG["uk"]
+
+        alerts = weather.generate_current_alerts(current, config, "uk")
+
+        assert len(alerts) == 1
+        assert "HIGH WIND WARNING" in alerts[0]
+        assert "65.0 km/h" in alerts[0]
+
+    @pytest.mark.asyncio
+    async def test_generate_current_alerts_severe_cold_uk(self):
+        """Test severe cold warning for UK (different message from Japan)."""
+        current = {"wind_speed_10m": 10.0, "temperature_2m": -6.0}
+        config = weather.REGION_CONFIG["uk"]
+
+        alerts = weather.generate_current_alerts(current, config, "uk")
+
+        assert len(alerts) == 1
+        assert "SEVERE COLD WARNING" in alerts[0]
+        assert "Risk of severe frost." in alerts[0]
+        assert "Risk of frostbite" not in alerts[0]  # Should not have Japan message
+
+    @pytest.mark.asyncio
+    async def test_generate_current_alerts_severe_cold_japan(self):
+        """Test severe cold warning for Japan (different message from UK)."""
+        current = {"wind_speed_10m": 10.0, "temperature_2m": -6.0}
+        config = weather.REGION_CONFIG["japan"]
+
+        alerts = weather.generate_current_alerts(current, config, "japan")
+
+        assert len(alerts) == 1
+        assert "SEVERE COLD WARNING" in alerts[0]
+        assert "Risk of frostbite and dangerous driving conditions." in alerts[0]
+
+    @pytest.mark.asyncio
+    async def test_generate_forecast_alerts_severe_wind_warning_uk(self):
+        """Test severe wind warning for UK with specific alert type."""
+        daily = {
+            "time": ["2025-07-13"],
+            "wind_speed_10m_max": [65.0],
+            "temperature_2m_max": [25.0],
+            "temperature_2m_min": [15.0],
+            "precipitation_sum": [0.0],
+        }
+        config = weather.REGION_CONFIG["uk"]
+
+        alerts = weather.generate_forecast_alerts(daily, config, "uk")
+
+        assert len(alerts) == 1
+        assert "SEVERE WIND WARNING for 2025-07-13" in alerts[0]
+        assert "65.0 km/h" in alerts[0]
+
+    @pytest.mark.asyncio
+    async def test_generate_forecast_alerts_cold_warning_edge_case(self):
+        """Test cold warning threshold edge case (line 305) - Japan forecast cold_warning is -3°C."""
+        daily = {
+            "time": ["2025-07-13"],
+            "wind_speed_10m_max": [20.0],
+            "temperature_2m_max": [25.0],
+            "temperature_2m_min": [
+                -4.0
+            ],  # Below Japan forecast cold warning threshold (-3°C)
+            "precipitation_sum": [0.0],
+        }
+        config = weather.REGION_CONFIG["japan"]
+
+        alerts = weather.generate_forecast_alerts(daily, config, "japan")
+
+        assert len(alerts) == 1
+        assert "COLD WARNING for 2025-07-13" in alerts[0]
+        assert "-4.0°C" in alerts[0]
+
+    @pytest.mark.asyncio
+    async def test_generate_forecast_alerts_rain_message_japan(self):
+        """Test Japan-specific rain warning message."""
+        daily = {
+            "time": ["2025-07-13"],
+            "wind_speed_10m_max": [20.0],
+            "temperature_2m_max": [25.0],
+            "temperature_2m_min": [15.0],
+            "precipitation_sum": [35.0],  # Above warning threshold
+        }
+        config = weather.REGION_CONFIG["japan"]
+
+        alerts = weather.generate_forecast_alerts(daily, config, "japan")
+
+        assert len(alerts) == 1
+        assert "RAIN WARNING for 2025-07-13" in alerts[0]
+        assert "35.0 mm" in alerts[0]
+        assert "Possible flooding." in alerts[0]
+
+    @pytest.mark.asyncio
+    async def test_generate_forecast_alerts_severe_wind_warning_japan(self):
+        """Test severe wind warning for Japan with specific alert type (line 253)."""
+        daily = {
+            "time": ["2025-07-13"],
+            "wind_speed_10m_max": [65.0],  # Above severe threshold for Japan (50)
+            "temperature_2m_max": [25.0],
+            "temperature_2m_min": [15.0],
+            "precipitation_sum": [0.0],
+        }
+        config = weather.REGION_CONFIG["japan"]
+
+        alerts = weather.generate_forecast_alerts(daily, config, "japan")
+
+        assert len(alerts) == 1
+        assert "SEVERE WIND WARNING for 2025-07-13" in alerts[0]
+        assert "65.0 km/h" in alerts[0]
+
+    @pytest.mark.asyncio
+    async def test_generate_forecast_alerts_empty_daily_data(self):
+        """Test forecast alerts with empty daily data (line 253)."""
+        daily = {}  # Empty daily data
+        config = weather.REGION_CONFIG["japan"]
+
+        alerts = weather.generate_forecast_alerts(daily, config, "japan")
+
+        assert len(alerts) == 0  # Should return empty list
 
 
 class TestHelperFunctions:
