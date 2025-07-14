@@ -15,7 +15,7 @@
 - Format all python code using ruff after each task to ensure conformance
 - Create and update tests. Consider failure scenarios. Review missing coverage.
 - Run the test suite. Prefer running only applicable tests.
-- Update the .gitingore when new tools are added that generate caches and other files and directories that should not be added to version control.
+- Update the .gitignore when new tools are added that generate caches and other files and directories that should not be added to version control.
 
 # Version control
 - Maintain the .gitignore file. Pay attention when adding new tools or libraries which may require updating it.
